@@ -38,10 +38,8 @@ app.use((err, req, res, next) => {
   res.status(500).json(errorResponse);
 });
 
-const PORT = process.env.PORT ?? 3000;
-
-app.listen(PORT, () => {
-  console.log(`Server đang chạy tại port ${PORT}`);
+app.listen(process.env.PORT || 3000, () => {
+  console.log(`Server đang chạy tại port ${process.env.PORT || 3000}`);
 });
 
 export default app;
