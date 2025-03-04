@@ -1,0 +1,25 @@
+#Environment variables
+.env
+node_modules
+
+#Logs
+logs
+*.log
+npm-debug.log*
+
+#Temp
+temp
+*.temp
+
+#Cache
+cache
+*.cache
+
+#DS_Store
+.DS_Store
+
+#Editor
+.idea
+.vscode
+
+
