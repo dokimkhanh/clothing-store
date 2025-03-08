@@ -27,7 +27,7 @@ export const getProducts = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const products = await Product.find()
-      .populate('category', 'name')
+      .populate('category', '_id name slug description image')
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
@@ -49,7 +49,7 @@ export const getProducts = async (req, res) => {
 export const getProductBySlug = async (req, res) => {
   try {
     const product = await Product.findOne({ slug: req.params.slug })
-      .populate('category', 'name');
+      .populate('category', '_id name slug description image');
     
     if (!product) {
       return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
