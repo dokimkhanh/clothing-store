@@ -9,7 +9,7 @@ export const registerUser = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { email, password } = req.body;
+  const { email, password, phone, fullname, address } = req.body;
 
   try {
     let user = await User.findOne({ email });
@@ -17,9 +17,13 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Email đã tồn tại" });
     }
 
+    // Create new user with all provided fields
     user = new User({
       email,
       password: await bcrypt.hash(password, 10),
+      phone: phone,
+      fullname: fullname,
+      address: address
     });
 
     await user.save();
@@ -37,20 +41,20 @@ export const registerUser = async (req, res) => {
       { expiresIn: "1h" },
       (err, token) => {
         if (err) throw err;
+
+        // Return user data without sensitive information
+        const { password, __v, ...userWithoutSensitiveInfo } = user.toObject();
+
         res.status(201).json({
           message: "Đăng ký thành công",
           token,
-          user: {
-            email: user.email,
-            role: user.role,
-            createdAt: user.createdAt
-          }
+          user: userWithoutSensitiveInfo
         });
       }
     );
   } catch (err) {
     console.error(err.message);
-    res.status(500).send("Server Error");
+    res.status(500).json({ message: "Lỗi server", error: err.message });
   }
 };
 
@@ -90,17 +94,11 @@ export const loginUser = async (req, res) => {
       { expiresIn: "1h" },
       (err, token) => {
         if (err) throw err;
+        const { password, __v, ...userWithoutSensitiveInfo } = user.toObject();
         res.json({
           message: "Đăng nhập thành công",
           token,
-          user: {
-            id: user.id,
-            fullname: user.fullname,
-            email: user.email,
-            role: user.role,
-            status: user.status,
-            createdAt: user.createdAt
-          }
+          user: userWithoutSensitiveInfo,
         });
       }
     );
