@@ -1,13 +1,13 @@
 import express from 'express';
-import { registerUser, loginUser } from '../controllers/authController.js';
+import { registerUser, loginUser, userProfile } from '../controllers/authController.js';
 import { check } from 'express-validator';
 
 const router = express.Router();
 
 router.post('/register', [
-        check('email', 'Email không hợp lệ').isEmail(),
-        check('password', 'Mật khẩu phải có ít nhất 6 ký tự và tối đa 20 ký tự').isLength({ min: 6, max: 20 })
-    ],
+    check('email', 'Email không hợp lệ').isEmail(),
+    check('password', 'Mật khẩu phải có ít nhất 6 ký tự và tối đa 20 ký tự').isLength({ min: 6, max: 20 })
+],
     registerUser
 );
 
@@ -17,5 +17,8 @@ router.post('/login', [
 ],
     loginUser
 );
+
+router.get('/profile', userProfile)
+
 
 export default router; 
