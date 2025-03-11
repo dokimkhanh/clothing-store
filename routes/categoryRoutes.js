@@ -5,7 +5,6 @@ import { check } from 'express-validator';
 
 const router = express.Router();
 
-// Định nghĩa các route CRUD cho danh mục sản phẩm
 router.get('/', getCategories);
 
 router.post('/', isAuthenticated, isAdmin, [

@@ -41,8 +41,6 @@ export const registerUser = async (req, res) => {
       { expiresIn: "1h" },
       (err, token) => {
         if (err) throw err;
-
-        // Return user data without sensitive information
         const { password, __v, ...userWithoutSensitiveInfo } = user.toObject();
 
         res.status(201).json({
@@ -105,40 +103,5 @@ export const loginUser = async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error");
-  }
-};
-
-export const userProfile = async (req, res) => {
-  try {
-    const authHeader = req.header('Authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Không có token, quyền truy cập bị từ chối' });
-    }
-    
-    const token = authHeader.split(' ')[1];
-    
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    const user = await User.findById(decoded.user.id).select('-password -__v');
-    
-    if (!user) {
-      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-    }
-    
-    res.json({
-      success: true,
-      user
-    });
-  } catch (err) {
-    if (err.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: 'Token không hợp lệ' });
-    }
-    if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token đã hết hạn' });
-    }
-    
-    console.error('Lỗi khi lấy thông tin người dùng:', err.message);
-    res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
 };
