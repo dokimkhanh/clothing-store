@@ -1,19 +1,10 @@
 import User from "../models/userModel.js";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { validationResult } from "express-validator";
 
 export const getUserProfile = async (req, res) => {
   try {
-    const authHeader = req.header('Authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Không có token, quyền truy cập bị từ chối' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.user.id).select('-password -__v');
+    const user = await User.findById(req.user.id).select('-password -__v');
 
     if (!user) {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
@@ -24,13 +15,6 @@ export const getUserProfile = async (req, res) => {
       user
     });
   } catch (err) {
-    if (err.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: 'Token không hợp lệ' });
-    }
-    if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token đã hết hạn' });
-    }
-
     console.error('Lỗi khi lấy thông tin người dùng:', err.message);
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
@@ -38,16 +22,7 @@ export const getUserProfile = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const authHeader = req.header('Authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Không có token, quyền truy cập bị từ chối' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const user = await User.findById(decoded.user.id);
+    const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
@@ -56,28 +31,12 @@ export const updateProfile = async (req, res) => {
     if (req.body.fullname !== undefined) updateFields.fullname = req.body.fullname;
     if (req.body.phone !== undefined) updateFields.phone = req.body.phone;
     
-    if (req.body.address !== undefined) {
-      if (Array.isArray(req.body.address)) {
-        const validAddresses = req.body.address.filter(addr =>
-          typeof addr === 'object' && addr !== null
-        );
-
-        if (validAddresses.length > 0) {
-          updateFields.address = validAddresses;
-        }
-      }
-      else if (typeof req.body.address === 'object' && req.body.address !== null) {
-        const currentAddresses = user.address || [];
-        updateFields.address = [...currentAddresses, req.body.address];
-      }
-    }
-    
     if (Object.keys(updateFields).length === 0) {
       return res.status(400).json({ message: 'Không có thông tin nào được cập nhật' });
     }
 
     const updatedUser = await User.findByIdAndUpdate(
-      decoded.user.id,
+      req.user.id,
       { $set: updateFields },
       { new: true, runValidators: true }
     ).select('-password -__v');
@@ -88,13 +47,6 @@ export const updateProfile = async (req, res) => {
       user: updatedUser
     });
   } catch (err) {
-    if (err.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: 'Token không hợp lệ' });
-    }
-    if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token đã hết hạn' });
-    }
-
     console.error('Lỗi khi cập nhật thông tin người dùng:', err.message);
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
@@ -107,16 +59,7 @@ export const changePassword = async (req, res) => {
   }
 
   try {
-    const authHeader = req.header('Authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Không có token, quyền truy cập bị từ chối' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const user = await User.findById(decoded.user.id);
+    const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
@@ -136,38 +79,98 @@ export const changePassword = async (req, res) => {
       message: 'Đổi mật khẩu thành công'
     });
   } catch (err) {
-    if (err.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: 'Token không hợp lệ' });
-    }
-    if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token đã hết hạn' });
-    }
-
     console.error('Lỗi khi đổi mật khẩu:', err.message);
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
 };
 
-
-export const deleteAddress = async (req, res) => {
+export const addAddress = async (req, res) => {
   try {
-    const authHeader = req.header('Authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Không có token, quyền truy cập bị từ chối' });
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
 
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const addressId = req.params.id;
-    
-    if (!addressId) {
-      return res.status(400).json({ message: 'Không tìm thấy địa được cung cấp' });
+    if (!req.body.address || typeof req.body.address !== 'object' || req.body.address === null) {
+      return res.status(400).json({ message: 'Dữ liệu địa chỉ không hợp lệ' });
     }
 
     const updatedUser = await User.findByIdAndUpdate(
-      decoded.user.id,
+      req.user.id,
+      { $push: { address: req.body.address } },
+      { new: true, runValidators: true }
+    ).select('-password -__v');
+
+    res.json({
+      success: true,
+      message: 'Thêm địa chỉ thành công',
+      user: updatedUser
+    });
+  } catch (err) {
+    console.error('Lỗi khi thêm địa chỉ:', err.message);
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};
+
+export const updateAddress = async (req, res) => {
+  try {
+    const addressId = req.params.id;
+    
+    if (!addressId) {
+      return res.status(400).json({ message: 'ID địa chỉ không được cung cấp' });
+    }
+
+    if (!req.body.address || typeof req.body.address !== 'object' || req.body.address === null) {
+      return res.status(400).json({ message: 'Dữ liệu địa chỉ không hợp lệ' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+    }
+
+    const addressExists = user.address.some(addr => addr._id.toString() === addressId);
+    if (!addressExists) {
+      return res.status(404).json({ message: 'Không tìm thấy địa chỉ với ID đã cung cấp' });
+    }
+
+    const updatedUser = await User.findOneAndUpdate(
+      { 
+        _id: req.user.id,
+        "address._id": addressId 
+      },
+      { 
+        $set: {
+          "address.$": {
+            _id: addressId,
+            ...req.body.address
+          }
+        } 
+      },
+      { new: true, runValidators: true }
+    ).select('-password -__v');
+
+    res.json({
+      success: true,
+      message: 'Cập nhật địa chỉ thành công',
+      user: updatedUser
+    });
+  } catch (err) {
+    console.error('Lỗi khi cập nhật địa chỉ:', err.message);
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};
+
+export const deleteAddress = async (req, res) => {
+  try {
+    const addressId = req.params.id;
+    
+    if (!addressId) {
+      return res.status(400).json({ message: 'Không tìm thấy địa chỉ được cung cấp' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.id,
       { $pull: { address: { _id: addressId } } },
       { new: true }
     ).select('-password -__v');
@@ -176,25 +179,12 @@ export const deleteAddress = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
 
-    const addressRemoved = !updatedUser.address.some(addr => addr._id.toString() === addressId);
-    
-    if (!addressRemoved) {
-      return res.status(404).json({ message: 'Không tìm thấy địa chỉ với ID đã cung cấp' });
-    }
-
     res.json({
       success: true,
       message: 'Xóa địa chỉ thành công',
       user: updatedUser
     });
   } catch (err) {
-    if (err.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: 'Token không hợp lệ' });
-    }
-    if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token đã hết hạn' });
-    }
-
     console.error('Lỗi khi xóa địa chỉ:', err.message);
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
