@@ -30,7 +30,7 @@ export const updateProfile = async (req, res) => {
     const updateFields = {};
     if (req.body.fullname !== undefined) updateFields.fullname = req.body.fullname;
     if (req.body.phone !== undefined) updateFields.phone = req.body.phone;
-    
+
     if (Object.keys(updateFields).length === 0) {
       return res.status(400).json({ message: 'Không có thông tin nào được cập nhật' });
     }
@@ -115,7 +115,7 @@ export const addAddress = async (req, res) => {
 export const updateAddress = async (req, res) => {
   try {
     const addressId = req.params.id;
-    
+
     if (!addressId) {
       return res.status(400).json({ message: 'ID địa chỉ không được cung cấp' });
     }
@@ -135,17 +135,17 @@ export const updateAddress = async (req, res) => {
     }
 
     const updatedUser = await User.findOneAndUpdate(
-      { 
+      {
         _id: req.user.id,
-        "address._id": addressId 
+        "address._id": addressId
       },
-      { 
+      {
         $set: {
           "address.$": {
             _id: addressId,
             ...req.body.address
           }
-        } 
+        }
       },
       { new: true, runValidators: true }
     ).select('-password -__v');
@@ -164,7 +164,7 @@ export const updateAddress = async (req, res) => {
 export const deleteAddress = async (req, res) => {
   try {
     const addressId = req.params.id;
-    
+
     if (!addressId) {
       return res.status(400).json({ message: 'Không tìm thấy địa chỉ được cung cấp' });
     }
@@ -186,6 +186,60 @@ export const deleteAddress = async (req, res) => {
     });
   } catch (err) {
     console.error('Lỗi khi xóa địa chỉ:', err.message);
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};
+
+export const setDefaultAddress = async (req, res) => {
+  try {
+    const addressId = req.params.id;
+    
+    if (!addressId) {
+      return res.status(400).json({ message: 'ID địa chỉ chưa được cung cấp' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+    }
+
+    // Tìm vị trí của địa chỉ trong mảng
+    const addressIndex = user.address.findIndex(addr => addr._id.toString() === addressId);
+    if (addressIndex === -1) {
+      return res.status(404).json({ message: 'Không tìm thấy địa chỉ với ID đã cung cấp' });
+    }
+
+    // Nếu địa chỉ đã ở vị trí đầu tiên, không cần thay đổi
+    if (addressIndex === 0) {
+      return res.json({
+        success: true,
+        message: 'Địa chỉ này đã là mặc định',
+        user: user
+      });
+    }
+
+    // Lấy địa chỉ cần đặt làm mặc định
+    const defaultAddress = user.address[addressIndex];
+    
+    // Tạo mảng địa chỉ mới
+    const newAddresses = [...user.address];
+    newAddresses.splice(addressIndex, 1); // Xóa địa chỉ khỏi vị trí hiện tại
+    newAddresses.unshift(defaultAddress); // Thêm vào đầu mảng
+
+    // Cập nhật mảng địa chỉ trong cơ sở dữ liệu
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: { address: newAddresses } },
+      { new: true, runValidators: true }
+    ).select('-password -__v');
+
+    res.json({
+      success: true,
+      message: 'Đặt địa chỉ mặc định thành công',
+      user: updatedUser
+    });
+  } catch (err) {
+    console.error('Lỗi khi đặt địa chỉ mặc định:', err.message);
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
 };

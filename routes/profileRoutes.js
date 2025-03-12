@@ -1,5 +1,5 @@
 import express from 'express';
-import { getUserProfile, updateProfile, changePassword, deleteAddress, addAddress, updateAddress } from '../controllers/profileController.js';
+import { getUserProfile, updateProfile, changePassword, deleteAddress, addAddress, updateAddress, setDefaultAddress } from '../controllers/profileController.js';
 import { check } from 'express-validator';
 import { isAuthenticated } from '../middlewares/authMiddleware.js';
 
@@ -20,5 +20,6 @@ router.put('/change-password', isAuthenticated, [
 router.post('/address', isAuthenticated, addAddress);
 router.put('/address/:id', isAuthenticated, updateAddress);
 router.delete('/address/:id', isAuthenticated, deleteAddress);
+router.put('/address/:id/default', isAuthenticated, setDefaultAddress);
 
 export default router;
