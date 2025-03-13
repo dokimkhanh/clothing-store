@@ -42,6 +42,18 @@ const orderSchema = new mongoose.Schema({
     enum: ['pending', 'completed', 'cancelled'],
     default: 'pending'
   },
+  // Thêm trường để lưu mã giao dịch từ cổng thanh toán
+  transactionId: {
+    type: String,
+    trim: true
+  },
+  // Thêm trường để lưu thông tin chi tiết về giao dịch
+  transactionInfo: {
+    transactionNo: String,
+    payDate: String,
+    bankCode: String,
+    cardType: String
+  },
   createdAt: {
     type: Date,
     default: Date.now

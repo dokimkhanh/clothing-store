@@ -4,37 +4,79 @@ import moment from 'moment';
 import crypto from 'crypto';
 import qs from 'qs';
 import dotenv from 'dotenv';
+import Order from '../models/orderModel.js';
 dotenv.config();
 
 const router = express.Router();
 
-export const createPaymentUrl = (req, res, next) => {
-    process.env.TZ = 'Asia/Ho_Chi_Minh';
-    const date = new Date();
+export const createPaymentUrl = async (req, res, next) => {
+    try {
+        // Kiểm tra dữ liệu đầu vào
+        if (!req.body.amount) {
+            return res.status(400).json({ success: false, message: 'Thiếu thông tin số tiền thanh toán (amount)' });
+        }
 
-    let vnp_Params = {};
-    vnp_Params['vnp_Version'] = '2.1.0';
-    vnp_Params['vnp_Command'] = 'pay';
-    vnp_Params['vnp_TmnCode'] = process.env.VNPAY_TNM_CODE;
-    vnp_Params['vnp_Locale'] = 'vn';
-    vnp_Params['vnp_CurrCode'] = 'VND';
-    vnp_Params['vnp_TxnRef'] = moment(date).format('DDHHmmss');
-    vnp_Params['vnp_OrderInfo'] = 'Thanh toan cho ma GD:' + moment(date).format('DDHHmmss');
-    vnp_Params['vnp_OrderType'] = 'other';
-    vnp_Params['vnp_Amount'] = req.body.amount * 100;
-    vnp_Params['vnp_ReturnUrl'] = process.env.VNPAY_RETURN_URL;
-    vnp_Params['vnp_IpAddr'] = '127.0.0.1';
-    vnp_Params['vnp_CreateDate'] = moment(date).format('YYYYMMDDHHmmss');
+        if (!req.body.products || !Array.isArray(req.body.products) || req.body.products.length === 0) {
+            return res.status(400).json({ success: false, message: 'Thiếu thông tin sản phẩm' });
+        }
 
-    vnp_Params = sortObject(vnp_Params);
+        if (!req.body.address) {
+            return res.status(400).json({ success: false, message: 'Thiếu thông tin địa chỉ giao hàng' });
+        }
 
-    const signData = qs.stringify(vnp_Params, { encode: false });
-    const hmac = crypto.createHmac('sha512', process.env.VNPAY_HASH_SECRET);
-    const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
-    vnp_Params['vnp_SecureHash'] = signed;
-    const paymentUrl = process.env.VNPAY_URL + '?' + qs.stringify(vnp_Params, { encode: false });
+        process.env.TZ = 'Asia/Ho_Chi_Minh';
+        const date = new Date();
+        const txnRef = moment(date).format('DDHHmmss');
 
-    return res.json({ paymentUrl });
+        let vnp_Params = {};
+        vnp_Params['vnp_Version'] = '2.1.0';
+        vnp_Params['vnp_Command'] = 'pay';
+        vnp_Params['vnp_TmnCode'] = process.env.VNPAY_TNM_CODE;
+        vnp_Params['vnp_Locale'] = 'vn';
+        vnp_Params['vnp_CurrCode'] = 'VND';
+        vnp_Params['vnp_TxnRef'] = txnRef;
+        vnp_Params['vnp_OrderInfo'] = 'Thanh toan cho ma GD:' + txnRef;
+        vnp_Params['vnp_OrderType'] = 'other';
+        vnp_Params['vnp_Amount'] = req.body.amount * 100;
+        vnp_Params['vnp_ReturnUrl'] = process.env.VNPAY_RETURN_URL;
+        vnp_Params['vnp_IpAddr'] = '127.0.0.1';
+        vnp_Params['vnp_CreateDate'] = moment(date).format('YYYYMMDDHHmmss');
+
+        // Create a new order with pending status
+        const orderData = {
+            user: req.user.id,
+            products: req.body.products,
+            paymentMethod: 'VNPay',
+            address: req.body.address,
+            totalAmount: req.body.amount, // Đảm bảo trường totalAmount luôn có giá trị
+            status: 'pending',
+            transactionId: txnRef // Lưu mã giao dịch VNPay vào đơn hàng
+        };
+
+        const order = new Order(orderData);
+        await order.save();
+
+        vnp_Params = sortObject(vnp_Params);
+
+        const signData = qs.stringify(vnp_Params, { encode: false });
+        const hmac = crypto.createHmac('sha512', process.env.VNPAY_HASH_SECRET);
+        const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+        vnp_Params['vnp_SecureHash'] = signed;
+        const paymentUrl = process.env.VNPAY_URL + '?' + qs.stringify(vnp_Params, { encode: false });
+
+        return res.json({ paymentUrl, orderId: order._id });
+    } catch (err) {
+        console.error('Lỗi khi tạo URL thanh toán:', err);
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Lỗi server', 
+            error: err.message,
+            details: err.errors ? Object.keys(err.errors).map(key => ({
+                field: key,
+                message: err.errors[key].message
+            })) : []
+        });
+    }
 };
 
 export const vnpayReturn = (req, res, next) => {
@@ -208,6 +250,56 @@ export const refund = (req, res, next) => {
         .catch(error => {
             console.error(error);
         });
+};
+
+export const verifyPayment = async (req, res) => {
+    try {
+        // Kiểm tra dữ liệu đầu vào
+        if (!req.body.vnp_TxnRef) {
+            return res.status(400).json({ success: false, message: 'Thiếu mã giao dịch (vnp_TxnRef)' });
+        }
+
+        // Tìm đơn hàng với mã giao dịch và trạng thái pending
+        const order = await Order.findOne({
+            transactionId: req.body.vnp_TxnRef,
+            status: 'pending'
+        });
+
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng hoặc đơn hàng đã được xử lý' });
+        }
+
+        // Kiểm tra kết quả thanh toán
+        const responseCode = req.body.vnp_ResponseCode;
+        
+        // Cập nhật thông tin giao dịch
+        order.transactionInfo = {
+            transactionNo: req.body.vnp_TransactionNo || '',
+            payDate: req.body.vnp_PayDate || '',
+            bankCode: req.body.vnp_BankCode || '',
+            cardType: req.body.vnp_CardType || ''
+        };
+
+        // Cập nhật trạng thái đơn hàng dựa trên mã phản hồi
+        if (responseCode === '00') {
+            // Thanh toán thành công
+            order.status = 'completed';
+            await order.save();
+            return res.status(200).json({ success: true, message: 'Thanh toán thành công', order });
+        } else {
+            // Thanh toán thất bại
+            order.status = 'cancelled';
+            await order.save();
+            return res.status(200).json({ success: false, message: 'Thanh toán thất bại', order });
+        }
+    } catch (error) {
+        console.error('Lỗi khi xác minh thanh toán:', error);
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Lỗi server', 
+            error: error.message 
+        });
+    }
 };
 
 const sortObject = (obj) => {

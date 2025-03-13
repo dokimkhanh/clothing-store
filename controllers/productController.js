@@ -46,6 +46,33 @@ export const getProducts = async (req, res) => {
   }
 };
 
+export const getProductsByCategory = async (req, res) => {
+  try {
+    const categoryId = req.params.categoryId;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const products = await Product.find({ category: categoryId })
+      .populate('category', '_id name slug description image')
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
+
+    const total = await Product.countDocuments({ category: categoryId });
+
+    res.json({
+      products,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalProducts: total
+    });
+  } catch (err) {
+    console.error(`Lỗi khi lấy sản phẩm theo danh mục ${req.params.categoryId}:`, err);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
 export const getProductBySlug = async (req, res) => {
   try {
     const product = await Product.findOne({ slug: req.params.slug })

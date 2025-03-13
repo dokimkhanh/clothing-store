@@ -5,7 +5,8 @@ import {
   getProducts,
   getProductBySlug,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  getProductsByCategory
 } from '../controllers/productController.js';
 import { isAuthenticated, isAdmin } from '../middlewares/authMiddleware.js';
 
@@ -23,10 +24,11 @@ const productValidation = [
 ];
 
 router.get('/', getProducts);
+router.get('/category/:categoryId', getProductsByCategory);
 router.get('/:slug', getProductBySlug);
 
 router.post('/', isAuthenticated, isAdmin, productValidation, createProduct);
 router.put('/:id', isAuthenticated, isAdmin, productValidation, updateProduct);
 router.delete('/:id', isAuthenticated, isAdmin, deleteProduct);
 
-export default router; 
+export default router;
