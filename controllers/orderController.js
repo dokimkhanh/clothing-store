@@ -30,6 +30,38 @@ export const getOrders = async (req, res) => {
     }
 };
 
+export const getUserOrders = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        
+        // Thiết lập các tham số phân trang
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+        
+        const orders = await Order.find({ user: userId })
+            .populate('products.product', 'name price images slug') 
+            .sort({ createdAt: -1 }) 
+            .skip(skip)
+            .limit(limit);
+        
+        const totalOrders = await Order.countDocuments({ user: userId });
+        
+        res.json({
+            orders,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalOrders / limit),
+                totalItems: totalOrders,
+                itemsPerPage: limit
+            }
+        });
+    } catch (err) {
+        console.error('Lỗi khi lấy danh sách đơn hàng của người dùng:', err);
+        res.status(500).json({ message: 'Lỗi server' });
+    }
+};
+
 export const getOrderById = async (req, res) => {
     try {
         const order = await Order.findById(req.params.id).populate('user', 'email').populate('products.product', 'name');

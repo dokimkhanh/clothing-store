@@ -5,7 +5,8 @@ import {
   getOrders,
   getOrderById,
   updateOrder,
-  deleteOrder
+  deleteOrder,
+  getUserOrders
 } from '../controllers/orderController.js';
 import { isAuthenticated } from '../middlewares/authMiddleware.js';
 
@@ -31,6 +32,7 @@ const updateOrderValidation = [
 
 router.post('/', isAuthenticated, orderValidation, createOrder);
 router.get('/', isAuthenticated, getOrders);
+router.get('/my-orders', isAuthenticated, getUserOrders);
 router.get('/:id', isAuthenticated, getOrderById);
 router.put('/:id', isAuthenticated, updateOrderValidation, updateOrder);
 router.delete('/:id', isAuthenticated, deleteOrder);
