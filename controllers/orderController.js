@@ -22,7 +22,13 @@ export const createOrder = async (req, res) => {
 
 export const getOrders = async (req, res) => {
     try {
-        const orders = await Order.find().populate('user', 'email').populate('products.product', 'name');
+        const orders = await Order.find()
+            .populate('user', 'email')
+            .populate({
+                path: 'products.product',
+                select: 'name sizes description slug',
+                populate: { path: 'category', select: 'name slug' }
+            });
         res.json(orders);
     } catch (err) {
         console.error('Lỗi khi lấy danh sách đơn hàng:', err);
@@ -33,20 +39,24 @@ export const getOrders = async (req, res) => {
 export const getUserOrders = async (req, res) => {
     try {
         const userId = req.user.id;
-        
+
         // Thiết lập các tham số phân trang
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
-        
+
         const orders = await Order.find({ user: userId })
-            .populate('products.product', 'name price images slug') 
-            .sort({ createdAt: -1 }) 
+            .populate({
+                path: 'products.product',
+                select: 'name sizes description slug',
+                populate: { path: 'category', select: 'name slug' }
+            })
+            .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit);
-        
+
         const totalOrders = await Order.countDocuments({ user: userId });
-        
+
         res.json({
             orders,
             pagination: {
@@ -64,7 +74,13 @@ export const getUserOrders = async (req, res) => {
 
 export const getOrderById = async (req, res) => {
     try {
-        const order = await Order.findById(req.params.id).populate('user', 'email').populate('products.product', 'name');
+        const order = await Order.findById(req.params.id)
+            .populate('user', 'email')
+            .populate({
+                path: 'products.product',
+                select: 'name sizes description slug',
+                populate: { path: 'category', select: 'name slug' }
+            });
         if (!order) {
             return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
         }

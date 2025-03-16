@@ -38,7 +38,7 @@ export const registerUser = async (req, res) => {
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: "1h" },
+      { expiresIn: "24h" },
       (err, token) => {
         if (err) throw err;
         const { password, __v, ...userWithoutSensitiveInfo } = user.toObject();
@@ -89,7 +89,7 @@ export const loginUser = async (req, res) => {
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: "1h" },
+      { expiresIn: "24h" },
       (err, token) => {
         if (err) throw err;
         const { password, __v, ...userWithoutSensitiveInfo } = user.toObject();
