@@ -2,7 +2,6 @@ import { uploadImageToFreeImage } from '../helpers/imageUploadHelper.js';
 
 export const uploadImage = async (req, res) => {
     try {
-        // Validate request body
         if (!req.body.image) {
             return res.status(400).json({
                 success: false,
@@ -10,7 +9,7 @@ export const uploadImage = async (req, res) => {
             });
         }
 
-        const base64Image = req.body.image; // Expecting base64 string in the request body
+        const base64Image = req.body.image; 
         const imageUrl = await uploadImageToFreeImage(base64Image);
         
         return res.status(200).json({

@@ -16,7 +16,7 @@ export const uploadImageToFreeImage = async (imageData) => {
         const formData = new FormData();
         formData.append('key', apiKey);
         formData.append('source', imageData);
-        formData.append('action', 'upload'); // Required parameter for FreeImage API
+        formData.append('action', 'upload'); 
         
         const response = await axios.post('https://freeimage.host/api/1/upload', formData, {
             headers: {
