@@ -1,13 +1,29 @@
-import { uploadImageToImgbb } from '../helpers/imageUploadHelper.js';
+import { uploadImageToFreeImage } from '../helpers/imageUploadHelper.js';
 
 export const uploadImage = async (req, res) => {
+    try {
+        // Validate request body
+        if (!req.body.image) {
+            return res.status(400).json({
+                success: false,
+                message: 'Image data is required'
+            });
+        }
 
-    const base64Image = req.body.image; // Expecting base64 string in the request body
-    const response = await uploadImageToImgbb(base64Image);
-    if (response.success) {
-        res.status(200).json({ imageUrl: response });
-    } else {
-        res.status(500).json({ message: 'Error uploading image', error: response.error });
+        const base64Image = req.body.image; // Expecting base64 string in the request body
+        const imageUrl = await uploadImageToFreeImage(base64Image);
+        
+        return res.status(200).json({
+            success: true,
+            message: 'Image uploaded successfully',
+            imageUrl
+        });
+    } catch (error) {
+        console.error('Error in uploadImage controller:', error.message);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to upload image',
+            error: error.message
+        });
     }
-
 };
