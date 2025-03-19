@@ -1,75 +1,165 @@
 import Category from '../models/categoryModel.js';
 import { validationResult } from 'express-validator';
 
-// Lấy danh sách danh mục
 export const getCategories = async (req, res) => {
   try {
-    const categories = await Category.find();
-    res.json(categories);
+    const categories = await Category.find().sort({ createdAt: -1 });
+    res.json({
+      success: true,
+      message: 'Lấy danh sách danh mục thành công',
+      categories
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Lỗi server' });
+    console.error('Error fetching categories:', err.message);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server',
+      error: err.message
+    });
   }
 };
 
-// Tạo mới một danh mục
 export const createCategory = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    return res.status(400).json({
+      success: false,
+      message: 'Dữ liệu không hợp lệ',
+      errors: errors.array()
+    });
   }
+
   try {
     const newCategory = new Category(req.body);
     await newCategory.save();
-    res.status(201).json(newCategory);
+
+    res.status(201).json({
+      success: true,
+      message: 'Tạo danh mục thành công',
+      category: newCategory
+    });
   } catch (err) {
-    res.status(400).json({ message: 'Lỗi khi tạo danh mục' });
+    console.error('Error creating category:', err.message);
+    res.status(400).json({
+      success: false,
+      message: 'Lỗi khi tạo danh mục',
+      error: err.message
+    });
   }
 };
 
-// Lấy thông tin chi tiết một danh mục
 export const getCategoryById = async (req, res) => {
   try {
     const category = await Category.findById(req.params.id);
-    if (!category) return res.status(404).json({ message: 'Không tìm thấy danh mục' });
-    res.json(category);
+
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy danh mục'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Lấy danh mục thành công',
+      category
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Lỗi server' });
+    console.error('Error fetching category by ID:', err.message);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server',
+      error: err.message
+    });
   }
 };
 
-// Lấy thông tin chi tiết một danh mục bằng slug
 export const getCategoryBySlug = async (req, res) => {
   try {
     const category = await Category.findOne({ slug: req.params.slug });
-    if (!category) return res.status(404).json({ message: 'Không tìm thấy danh mục' });
-    res.json(category);
+
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy danh mục'
+      });
+    }
+
+    res.json({
+      success: true,
+      category
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Lỗi server' });
+    console.error('Error fetching category by slug:', err.message);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server',
+      error: err.message
+    });
   }
 };
 
-// Cập nhật thông tin một danh mục
 export const updateCategory = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    return res.status(400).json({
+      success: false,
+      message: 'Dữ liệu không hợp lệ',
+      errors: errors.array()
+    });
   }
+
   try {
-    const updatedCategory = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updatedCategory) return res.status(404).json({ message: 'Không tìm thấy danh mục' });
-    res.json(updatedCategory);
+    const updatedCategory = await Category.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
+    if (!updatedCategory) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy danh mục'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Cập nhật danh mục thành công',
+      category: updatedCategory
+    });
   } catch (err) {
-    res.status(400).json({ message: 'Lỗi khi cập nhật danh mục' });
+    console.error('Error updating category:', err.message);
+    res.status(400).json({
+      success: false,
+      message: 'Lỗi khi cập nhật danh mục',
+      error: err.message
+    });
   }
 };
 
-// Xóa một danh mục
 export const deleteCategory = async (req, res) => {
   try {
     const deletedCategory = await Category.findByIdAndDelete(req.params.id);
-    if (!deletedCategory) return res.status(404).json({ message: 'Không tìm thấy danh mục' });
-    res.json({ message: 'Xóa danh mục thành công' });
+
+    if (!deletedCategory) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy danh mục'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Xóa danh mục thành công',
+      category: deletedCategory
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Lỗi server' });
+    console.error('Error deleting category:', err.message);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server',
+      error: err.message
+    });
   }
-}; 
+};
