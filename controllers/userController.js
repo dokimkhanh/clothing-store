@@ -1,7 +1,7 @@
 import User from '../models/userModel.js';
 import { validationResult } from 'express-validator';
+import bcrypt from 'bcryptjs';
 
-// Tạo người dùng mới
 export const createUser = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -9,7 +9,12 @@ export const createUser = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const user = new User(req.body);
+    const { password, ...otherData } = req.body;
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({
+      ...otherData,
+      password: hashedPassword
+    });
     await user.save();
     res.status(201).json({
       message: 'Tạo người dùng thành công',
@@ -23,8 +28,12 @@ export const createUser = async (req, res) => {
 
 export const getUsers = async (req, res) => {
   try {
-    const users = await User.find().sort({ createdAt: -1 }).select('-password'); 
-    res.json(users);
+    const users = await User.find().sort({ createdAt: -1 }).select('-password');
+    res.status(200).json({
+      success: true,
+      message: 'Lấy danh sách người dùng thành công',
+      users: users
+    });
   } catch (err) {
     console.error('Lỗi khi lấy danh sách người dùng:', err);
     res.status(500).json({ message: 'Lỗi server' });
@@ -37,14 +46,17 @@ export const getUserById = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
-    res.json(user);
+    res.status(200).json({
+      success: true,
+      message: 'Lấy thông tin người dùng thành công',
+      user: user
+    });
   } catch (err) {
     console.error('Lỗi khi lấy chi tiết người dùng:', err);
     res.status(500).json({ message: 'Lỗi server' });
   }
 };
 
-// Cập nhật người dùng
 export const updateUser = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -55,8 +67,8 @@ export const updateUser = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true, runValidators: true, context: 'query' } // Chỉ định các tùy chọn
-    ).select('-password'); // Không trả về mật khẩu
+      { new: true, runValidators: true, context: 'query' }
+    ).select('-password');
 
     if (!updatedUser) {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
@@ -72,7 +84,6 @@ export const updateUser = async (req, res) => {
   }
 };
 
-// Xóa người dùng
 export const deleteUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -81,7 +92,10 @@ export const deleteUser = async (req, res) => {
     }
 
     await user.deleteOne();
-    res.json({ message: 'Xóa người dùng thành công' });
+    res.status(200).json({
+      success: true,
+      message: 'Xóa người dùng thành công'
+    });
   } catch (err) {
     console.error('Lỗi khi xóa người dùng:', err);
     res.status(500).json({ message: 'Lỗi server' });
