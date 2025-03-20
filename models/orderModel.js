@@ -22,7 +22,7 @@ const orderSchema = new mongoose.Schema({
   ],
   paymentMethod: {
     type: String,
-    enum: ['VNPay', 'Momo', 'Tiền mặt'],
+    enum: ['VNPay', 'Momo', 'COD'],
     required: true
   },
   address: {
